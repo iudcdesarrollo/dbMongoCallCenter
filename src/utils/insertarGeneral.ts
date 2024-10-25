@@ -5,7 +5,8 @@ import { connectDB } from '../db/connectDB';
 const nuevoGeneralData = {
     CategoriaGeneral: "xxxxxxxxx",
     CategoriaEspecifica: "sssssssss",
-    Subcategoria: "ssssssssss"
+    Subcategoria: "",
+    informacion: "jsnjsdnjsdn"
 };
 
 const insertarGeneral = async () => {

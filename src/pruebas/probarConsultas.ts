@@ -1,17 +1,21 @@
 import mongoose from 'mongoose';
 import { connectDB } from '../db/connectDB';
 import { getAllData } from '../utils/consultas';
-import { ConsultaEspecifica } from '../@types/typesMongoDb';
+import { Consultas } from '../@types/typesMongoDb';
 
-const consulta: ConsultaEspecifica = {
+const consulta: Consultas = {
     especifico: true,
+    general: true,
     especificoBusqueda: [
         'profesional_psicologia_dobleTitulacion',
         'profesional_psicologia_duracion'
+    ],
+    generalBusqueda: [
+        'xxxxxxxxx_sssssssss'
     ]
 };
 
-export const ejecutarPrueba = async (consulta: ConsultaEspecifica) => {
+export const ejecutarPrueba = async (consulta: Consultas) => {
     try {
         await connectDB();
         const resultado = await getAllData(consulta);

@@ -1,45 +1,89 @@
-import { ConsultaEspecifica } from "../@types/typesMongoDb";
+import { Consultas } from "../@types/typesMongoDb";
 import Especifico from '../models/especifico.model';
+import General from '../models/general.model';
 
-export const getAllData = async (consulta: ConsultaEspecifica) => {
+export const getAllData = async (consulta: Consultas) => {
     try {
-        const { especifico, especificoBusqueda } = consulta;
+        const { especifico, general, especificoBusqueda, generalBusqueda } = consulta;
+        const results: Record<string, any> = {};
 
-        if (especifico && especificoBusqueda.length === 0) {
-            return `La consulta de cosas especificas esta basia.`;
+        if (especifico) {
+            if (especificoBusqueda.length === 0) {
+                results["especifico"] = "La consulta de datos específicos está vacía.";
+            } else {
+                const especificoConditions = especificoBusqueda.map(query => {
+                    const [tipoPrograma, programa, tema] = query.split('_');
+                    return {
+                        $and: [
+                            { tipoPrograma },
+                            { programa },
+                            { tema }
+                        ]
+                    };
+                });
+
+                const especificoResult = await Especifico.find(
+                    { $or: especificoConditions },
+                    {
+                        tipoPrograma: 1,
+                        programa: 1,
+                        tema: 1,
+                        informacion: 1,
+                        _id: 0
+                    }
+                ).lean();
+
+                const formattedEspecificoResult = especificoResult.reduce((acc, doc) => {
+                    const key = `${doc.tipoPrograma}_${doc.programa}_${doc.tema}`;
+                    acc[key] = doc.informacion;
+                    return acc;
+                }, {} as Record<string, string>);
+
+                results["especifico"] = formattedEspecificoResult;
+            }
         }
 
-        const queryArray = especificoBusqueda;
+        if (general) {
+            if (generalBusqueda.length === 0) {
+                results["general"] = "La consulta de datos generales está vacía.";
+            } else {
+                const generalConditions = generalBusqueda.map(query => {
+                    const parts = query.split('_');
+                    const condition: Record<string, any> = {};
 
-        const conditions = queryArray.map(query => {
-            const [tipoPrograma, programa, tema] = query.split('_');
-            return {
-                $and: [
-                    { tipoPrograma },
-                    { programa },
-                    { tema }
-                ]
-            };
-        });
+                    if (parts.length >= 2) {
+                        condition["CategoriaGeneral"] = parts[0];
+                        condition["CategoriaEspecifica"] = parts[1];
+                    }
+                    if (parts.length === 3) {
+                        condition["Subcategoria"] = parts[2];
+                    }
 
-        const result = await Especifico.find(
-            { $or: conditions },
-            { 
-                tipoPrograma: 1,
-                programa: 1,
-                tema: 1,
-                informacion: 1,
-                _id: 0
+                    return condition;
+                });
+
+                const generalResult = await General.find(
+                    { $or: generalConditions.map(cond => ({ $and: Object.entries(cond).map(([key, value]) => ({ [key]: value })) })) },
+                    {
+                        CategoriaGeneral: 1,
+                        CategoriaEspecifica: 1,
+                        Subcategoria: 1,
+                        informacion: 1,
+                        _id: 0
+                    }
+                ).lean();
+
+                const formattedGeneralResult = generalResult.reduce((acc, doc) => {
+                    const key = `${doc.CategoriaGeneral}_${doc.CategoriaEspecifica}${doc.Subcategoria ? `_${doc.Subcategoria}` : ''}`;
+                    acc[key] = doc.informacion;
+                    return acc;
+                }, {} as Record<string, string>);
+
+                results["general"] = formattedGeneralResult;
             }
-        ).lean();
+        }
 
-        const formattedResult = result.reduce((acc, doc) => {
-            const key = `${doc.tipoPrograma}_${doc.programa}_${doc.tema}`;
-            acc[key] = doc.informacion;
-            return acc;
-        }, {} as Record<string, string>);
-
-        return formattedResult;
+        return results;
 
     } catch (error: unknown) {
         console.error('Error en getAllData:', error);
